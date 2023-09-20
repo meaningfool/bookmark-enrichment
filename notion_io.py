@@ -14,22 +14,33 @@ headers = {
 
 
 def get_unprocessed_bookmarks():
-    url = f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query"
 
-    filter = {
-        "property": "Status",
-        "status": {
-            "equals": "inbox"
-        }
-    }
+  ## Build & send the request
+  url = f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query"
 
-    data = {
-        "filter": filter
-    }
+  filter = {
+      "property": "Status",
+      "status": {
+          "equals": "inbox"
+      }
+  }
 
-    response = requests.post(url, headers=headers, data=json.dumps(data))
+  data = {
+      "filter": filter
+  }
 
-    return response.json()['results']
+  response = requests.post(url, headers=headers, data=json.dumps(data))
+
+
+  ## Raise an error if the bookmarks cannot be retrieved
+  if response.status_code != 200:
+    custom_message = "Failed to retrieve Notion bookmarks"
+    raise requests.HTTPError(f'{response.status_code}: {response.reason}. {custom_message}', response=response)
+
+  return response.json()['results']
+
+
+
 
 def update_properties(page_id, bookmark_title, author):
     url = f"https://api.notion.com/v1/pages/{page_id}"

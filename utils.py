@@ -2,28 +2,33 @@ from bs4 import BeautifulSoup
 import requests
 import json
 import os
+import logging
 
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 
 def parse_tweet_content(tweet_id):
-    url_to_crawl = 'https://cdn.syndication.twimg.com/tweet-result?id=' + tweet_id + '&lang=en'
+  url_to_crawl = 'https://cdn.syndication.twimg.com/tweet-result?id=' + tweet_id + '&lang=en'
 
-    # Send GET request
-    response = requests.get(url_to_crawl)
+  # Send GET request
+  logging.debug("Tweet: request widget content")
+  response = requests.get(url_to_crawl)
 
-    # Parse the HTML
-    soup = BeautifulSoup(response.content, 'html.parser')
+  # HTML -> JSON
+  soup = BeautifulSoup(response.content, 'html.parser')
+  data = json.loads(soup.text)
 
-    # Extract the JSON data
-    data = json.loads(soup.text)
+  # Parse the JSON data
+  tweet_text = data.get("text")
+  tweet_author = data.get("user", {}).get("name")
+  
+  if not tweet_text or not tweet_author:
+    logging.debug("Expected keys not found in Tweet payload")
+    raise ValueError("Expected keys not found in Tweet payload")
 
-    tweet_text = data["text"]
-    tweet_author = data["user"]["name"]
-
-    return tweet_text, tweet_author
+  return tweet_text, tweet_author
 
 
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI
 from langchain.chains.llm import LLMChain
 from langchain.document_loaders import WebBaseLoader
 from langchain.prompts import PromptTemplate
@@ -39,7 +44,8 @@ def generate_tweet_title(text):
     {tweet_content}
     '''
     prompt = PromptTemplate(template=prompt_template, input_variables=['tweet_content'])
-    llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    logging.debug("Tweet title: just before calling AI")
     _input = prompt.format(tweet_content = text)
     return clean_title(llm(_input))
 
@@ -84,7 +90,7 @@ def get_article_data(url):
     )
 
     # Define LLM chain
-    llm = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k", openai_api_key=OPENAI_API_KEY) 
+    llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-16k", openai_api_key=OPENAI_API_KEY) 
     llm_chain = LLMChain(llm=llm, prompt=prompt)
 
     # Define StuffDocumentsChain
