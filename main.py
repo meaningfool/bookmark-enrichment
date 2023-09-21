@@ -1,8 +1,7 @@
 import os
 from flask import Flask, jsonify
 from flask_httpauth import HTTPBasicAuth
-import notion_io
-import utils
+import notion_io, scraping, data_generation
 from urllib.parse import urlparse
 import logging
 
@@ -40,11 +39,11 @@ def process_new_bookmarks():
     if (parsed_url.netloc in ['twitter.com', 'www.twitter.com']):
       # Retrieve de tweet content
       tweet_id = parsed_url.path.split('/')[-1]
-      (tweet_text, tweet_author) = utils.parse_tweet_content(tweet_id)
+      (tweet_text, tweet_author) = scraping.parse_tweet_content(tweet_id)
 
       # Create a good title
       logging.debug("Twitter: reached generate title")
-      bookmark_title = utils.generate_tweet_title(tweet_text)
+      bookmark_title = data_generation.generate_tweet_title(tweet_text)
 
       # Update Notion
       logging.debug("Twitter: reached notion update")
@@ -54,7 +53,7 @@ def process_new_bookmarks():
 
     elif (parsed_url.netloc != ''):
       # Create the article data
-      title, author, summary = utils.get_article_data(bookmarked_url)
+      title, author, summary = data_generation.get_article_data(bookmarked_url)
       
       # Update Notion page
       logging.debug("NOT twitter: reached notion update")
