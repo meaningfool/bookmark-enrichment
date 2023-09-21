@@ -67,9 +67,12 @@ def process_new_bookmarks():
 
 @app.errorhandler(Exception)
 def handle_exception(e):
-    # Log the error and return a generic error response
-    app.logger.error(f"An error occurred: {str(e)}")
-    return jsonify({"message": f"An error occurred: {str(e)}"}), 500
+  error_name = type(e).__name__
+  error_message = f"{error_name}: {str(e)}"
+  
+  # Log the error and return a generic error response
+  app.logger.error(f"An error occurred: {error_message}")
+  return jsonify({"message": f"An error occurred: {error_message}"}), 500
 
 
 if __name__ == "__main__":
