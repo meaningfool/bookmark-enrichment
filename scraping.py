@@ -6,6 +6,16 @@ import logging
 import asyncio
 from playwright.async_api import async_playwright
 
+
+
+
+
+
+
+
+
+
+
 BRIGHTDATA_USER = os.environ['BRIGHTDATA_USER']
 BRIGHTDATA_PASS = os.environ['BRIGHTDATA_PASS']
 

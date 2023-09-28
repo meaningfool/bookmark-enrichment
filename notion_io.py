@@ -61,7 +61,8 @@ def create_bookmark_objects(notion_raw_bookmarks):
     for item in notion_raw_bookmarks:
         bookmark = Bookmark(
             notion_id = item['id'],
-            url = item['properties']['URL']['url']
+            url = item['properties']['URL']['url'],
+            domain = urlparse(item['properties']['URL']['url']).netloc
         )
         bookmarks.append(bookmark)
     return bookmarks
