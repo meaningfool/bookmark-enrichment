@@ -565,6 +565,25 @@ optional = false
 python-versions = ">=3.9"
 
 [[package]]
+name = "openai"
+version = "0.27.8"
+description = "Python client library for the OpenAI API"
+category = "main"
+optional = false
+python-versions = ">=3.7.1"
+
+[package.dependencies]
+aiohttp = "*"
+requests = ">=2.20"
+tqdm = "*"
+
+[package.extras]
+datalib = ["numpy", "pandas (>=1.2.3)", "pandas-stubs (>=1.1.0.11)", "openpyxl (>=3.0.7)"]
+dev = ["black (>=21.6b0,<22.0.0)", "pytest (>=6.0.0,<7.0.0)", "pytest-asyncio", "pytest-mock"]
+embeddings = ["scikit-learn (>=1.0.2)", "tenacity (>=8.0.1)", "matplotlib", "plotly", "numpy", "scipy", "pandas (>=1.2.3)", "pandas-stubs (>=1.1.0.11)", "openpyxl (>=3.0.7)"]
+wandb = ["wandb", "numpy", "pandas (>=1.2.3)", "pandas-stubs (>=1.1.0.11)", "openpyxl (>=3.0.7)"]
+
+[[package]]
 name = "openapi-schema-pydantic"
 version = "1.2.4"
 description = "OpenAPI (v3) specification schema as pydantic class"
@@ -639,6 +658,18 @@ python-versions = ">=3.7"
 [package.extras]
 docs = ["furo (>=2023.5.20)", "proselint (>=0.13)", "sphinx-autodoc-typehints (>=1.23,!=1.23.4)", "sphinx (>=7.0.1)"]
 test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest-cov (>=4.1)", "pytest-mock (>=3.10)", "pytest (>=7.3.1)"]
+
+[[package]]
+name = "playwright"
+version = "1.38.0"
+description = "A high-level API to automate web browsers"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+greenlet = "2.0.2"
+pyee = "9.0.4"
 
 [[package]]
 name = "pluggy"
@@ -716,6 +747,17 @@ typing-extensions = ">=4.2.0"
 [package.extras]
 dotenv = ["python-dotenv (>=0.10.4)"]
 email = ["email-validator (>=1.0.3)"]
+
+[[package]]
+name = "pyee"
+version = "9.0.4"
+description = "A port of node.js's EventEmitter to python."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+typing-extensions = "*"
 
 [[package]]
 name = "pyflakes"
@@ -955,6 +997,23 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "tqdm"
+version = "4.66.1"
+description = "Fast, Extensible Progress Meter"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["pytest (>=6)", "pytest-cov", "pytest-timeout", "pytest-xdist"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
+
+[[package]]
 name = "typing-extensions"
 version = "4.7.1"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -1082,7 +1141,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-ena
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10.0,<3.11"
-content-hash = "72585054b8f71e4194272e3918c9be158e790874c8750e5f33c37e69ce9d520b"
+content-hash = "882d332564672e5f175ab2044922534e39f47c24a4c5054b434c4274ccbb764d"
 
 [metadata.files]
 aiohttp = []
@@ -1131,6 +1190,7 @@ multidict = []
 mypy-extensions = []
 numexpr = []
 numpy = []
+openai = []
 openapi-schema-pydantic = []
 packaging = []
 parso = []
@@ -1138,12 +1198,14 @@ pastel = []
 pexpect = []
 pkginfo = []
 platformdirs = []
+playwright = []
 pluggy = []
 poetry = []
 poetry-core = []
 ptyprocess = []
 pycparser = []
 pydantic = []
+pyee = []
 pyflakes = []
 pylev = []
 pyparsing = []
@@ -1163,6 +1225,7 @@ tenacity = []
 toml = []
 tomli = []
 tomlkit = []
+tqdm = []
 typing-extensions = []
 typing-inspect = []
 ujson = []

@@ -1,10 +1,12 @@
 import requests
 import json
 import os
+from models import Bookmark
 
 # Replace these with your API Key and Database ID
 NOTION_API_KEY = os.environ['NOTION_API_KEY']
-NOTION_DATABASE_ID = os.environ['NOTION_DATABASE_ID']
+#NOTION_DATABASE_ID = os.environ['NOTION_DATABASE_ID'] #Prod DB
+NOTION_DATABASE_ID = os.environ['NOTION_DEV_DATABASE_ID'] #Dev DB
 
 headers = {
     "Authorization": f"Bearer {NOTION_API_KEY}",
@@ -13,7 +15,13 @@ headers = {
 }
 
 
-def get_unprocessed_bookmarks():
+def retrieve_bookmarks_from_notion(nb_bookmarks):
+  raw_bookmarks = get_bookmarks_from_notion(nb_bookmarks)
+  bookmarks = create_bookmark_objects(raw_bookmarks)
+  return bookmarks
+
+
+def get_bookmarks_from_notion(page_size):
 
   ## Build & send the request
   url = f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query"
@@ -25,12 +33,21 @@ def get_unprocessed_bookmarks():
       }
   }
 
+  sorts = [
+      {
+          "timestamp": "created_time",
+          "direction": "ascending"
+      }
+  ]
+
   data = {
-      "filter": filter
+      "page_size": page_size,
+      "filter": filter,
+      "sorts": sorts
   }
-
+  print(json.dumps(data))
   response = requests.post(url, headers=headers, data=json.dumps(data))
-
+  print(response.status_code, response.reason)
 
   ## Raise an error if the bookmarks cannot be retrieved
   if response.status_code != 200:
@@ -39,7 +56,15 @@ def get_unprocessed_bookmarks():
 
   return response.json()['results']
 
-
+def create_bookmark_objects(notion_raw_bookmarks):
+    bookmarks = []
+    for item in notion_raw_bookmarks:
+        bookmark = Bookmark(
+            notion_id = item['id'],
+            url = item['properties']['URL']['url']
+        )
+        bookmarks.append(bookmark)
+    return bookmarks
 
 
 def update_properties(page_id, bookmark_title, author):

@@ -1,15 +1,17 @@
 import os
 from flask import Flask, jsonify
 from flask_httpauth import HTTPBasicAuth
-import notion_io, scraping, data_generation
-from urllib.parse import urlparse
+import notion_io
+#from urllib.parse import urlparse
 import logging
+from models import Bookmark
+
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
-nb_bookmark_processed_per_run = 1
+nb_bookmark_processed_per_run = 2
 
 USER_NAME = os.environ['USER_NAME']
 PASSWORD = os.environ['PASSWORD']
@@ -23,23 +25,18 @@ def verify_password(username, password):
 def home():
     return "Hello, world!"
 
+
 @app.route('/api/process_new_bookmarks', methods=['POST'])
 @auth.login_required
 def process_new_bookmarks():
 
   # Retrieve bookmarks
-  unprocessed_bookmarks_list = notion_io.get_unprocessed_bookmarks()[-nb_bookmark_processed_per_run:]
+  bookmarks =\
+    notion_io.retrieve_bookmarks_from_notion(nb_bookmark_processed_per_run)
 
+  logging.debug(f"Bookmarks : {bookmarks}")
+  ''''
   for bookmark in unprocessed_bookmarks_list:
-    notion_page_id = bookmark['id']
-    bookmarked_url = bookmark['properties']['URL']['url']
-    parsed_url = urlparse(bookmarked_url)
-    logging.debug("Bookmark URL about to be processed: %s", bookmarked_url)
-
-    if (parsed_url.netloc in ['twitter.com', 'www.twitter.com']):
-      # Retrieve de tweet content
-      tweet_id = parsed_url.path.split('/')[-1]
-      (tweet_text, tweet_author) = scraping.parse_tweet_content(tweet_id)
 
       # Create a good title
       logging.debug("Twitter: reached generate title")
@@ -60,7 +57,7 @@ def process_new_bookmarks():
       notion_io.update_properties(notion_page_id, title, author)
       notion_io.append_text_to_page(notion_page_id, summary)
       notion_io.update_status(notion_page_id)
-  
+  '''
   return jsonify({"message":"Success"}), 200
 
 
