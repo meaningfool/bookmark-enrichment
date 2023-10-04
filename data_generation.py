@@ -1,11 +1,11 @@
 import os
 
 from langchain.chat_models import ChatOpenAI
-from langchain.chains.llm import LLMChain
-from langchain.document_loaders import WebBaseLoader
 from langchain.prompts import PromptTemplate
-from langchain.chains.combine_documents.stuff import StuffDocumentsChain
-from langchain.output_parsers import StructuredOutputParser, ResponseSchema
+#from langchain.chains.llm import LLMChain
+#from langchain.document_loaders import WebBaseLoader
+#from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+#from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 
@@ -28,7 +28,7 @@ def clean_title(s):
         s = s.strip("\n '\"")
     return s
 
-
+'''
 def get_article_data(url):
     loader = WebBaseLoader(url)
 
@@ -74,4 +74,4 @@ def get_article_data(url):
     docs = loader.load()
     output = stuff_chain.run(docs)
     structured_output = output_parser.parse(output)
-    return structured_output['title'], structured_output['author'], structured_output['summary']
+    return structured_output['title'], structured_output['author'], structured_output['summary']'''

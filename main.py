@@ -1,17 +1,15 @@
 import os
 from flask import Flask, jsonify
 from flask_httpauth import HTTPBasicAuth
-import notion_io
-#from urllib.parse import urlparse
+import notion_io, enrich
 import logging
-from models import Bookmark
 
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
-nb_bookmark_processed_per_run = 2
+nb_bookmark_processed_per_run = 20
 
 USER_NAME = os.environ['USER_NAME']
 PASSWORD = os.environ['PASSWORD']
@@ -32,15 +30,25 @@ def process_new_bookmarks():
 
   # Retrieve bookmarks
   bookmarks =\
-    notion_io.retrieve_bookmarks_from_notion(nb_bookmark_processed_per_run)
+  notion_io.retrieve_bookmarks_from_notion(nb_bookmark_processed_per_run)
 
-  logging.debug(f"Bookmarks : {bookmarks}")
+  # Retrieve Twitter bookmarks
+  twitter_bookmarks = [bkmk for bkmk in bookmarks if bkmk["domain"] in ["twitter.com", "x.com"]]
+
+  # Enrich Twitter bookmarks
+  bookmarks = enrich.enrich_twitter_bookmarks(twitter_bookmarks)
+
+  logging.debug(f"Nb Bookmarks: {len(bookmarks)}")
+  logging.debug(f"Bookmark author : {bookmarks[0]['author']}")
+  logging.debug(f"Bookmark title : {bookmarks[0]['title']}")
+
+  # Update bookmarks in notion_io
+  [notion_io.update_bookmark_in_notion(bkmk) for bkmk in bookmarks]
+  
+  return bookmarks
   ''''
   for bookmark in unprocessed_bookmarks_list:
 
-      # Create a good title
-      logging.debug("Twitter: reached generate title")
-      bookmark_title = data_generation.generate_tweet_title(tweet_text)
 
       # Update Notion
       logging.debug("Twitter: reached notion update")
@@ -48,9 +56,6 @@ def process_new_bookmarks():
       notion_io.append_tweet_embed_to_page(notion_page_id, bookmarked_url)
       notion_io.update_status(notion_page_id)
 
-    elif (parsed_url.netloc != ''):
-      # Create the article data
-      title, author, summary = data_generation.get_article_data(bookmarked_url)
       
       # Update Notion page
       logging.debug("NOT twitter: reached notion update")

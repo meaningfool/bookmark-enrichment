@@ -23,8 +23,8 @@ def sign_aws_lambda_request(url, method, headers, body, service, region):
     return signed_headers
 
 
-def prepare_aws_lambda_request(url, body):
-    url = url
+def prepare_aws_lambda_request(body):
+    url = 'https://liem3isss5jhitalsclmhrpcxi0igcdl.lambda-url.eu-west-3.on.aws/'
     method = 'POST'
     headers = {'Content-Type': 'application/json'}
     body = body
