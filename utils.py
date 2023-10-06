@@ -1,113 +1,67 @@
-from bs4 import BeautifulSoup
 import requests
 import json
-import os
+import boto3
+import botocore.auth
+import botocore.awsrequest
 import logging
+import datetime
 
-OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
+from main import DEV_MODE
 
-def get_tweet_data(tweet_id):
-    # Retrieve and return JSON data for a given tweet ID.
-    url = f'https://cdn.syndication.twimg.com/tweet-result?id={tweet_id}&lang=en'
-    logging.debug("Requesting Tweet widget content")
-    response = requests.get(url)
-    response.raise_for_status()  # Raise an error for bad responses
+def get_image_url(url):
+  if url.startswith("s3://"):
+    return convert_s3_to_http_url(url)
+  elif not url.lower().endswith(('.jpg', '.png')):
+    return download_and_upload_to_s3(url)
+  else:
+    return url
 
-    # Convert HTML response to JSON
-    soup = BeautifulSoup(response.content, 'html.parser')
-    return json.loads(soup.text)
+def convert_s3_to_http_url(s3_url):
+    # Split the S3 URL into bucket and key
+    parts = s3_url.replace("s3://", "").split("/")
+    bucket = parts[0]
+    key = "/".join(parts[1:])
+    
+    # Construct and return the HTTP URL
+    http_url = f"http://{bucket}.s3.amazonaws.com/{key}"
+    return http_url
 
-
-def extract_tweet_info(data):
-    """Extract tweet text and author from JSON data."""
-    tweet_text = data.get("text")
-    tweet_author = data.get("user", {}).get("name")
-
-    if not tweet_text or not tweet_author:
-        logging.error("Expected keys not found in Tweet payload")
-        raise ValueError("Expected keys not found in Tweet payload")
-
-    return tweet_text, tweet_author
-
-
-def parse_tweet_content(tweet_id):
-    """Main function to parse tweet content given a tweet ID."""
-    data = get_tweet_data(tweet_id)
-    return extract_tweet_info(data)
-
-
-
-from langchain.chat_models import ChatOpenAI
-from langchain.chains.llm import LLMChain
-from langchain.document_loaders import WebBaseLoader
-from langchain.prompts import PromptTemplate
-from langchain.chains.combine_documents.stuff import StuffDocumentsChain
-from langchain.output_parsers import StructuredOutputParser, ResponseSchema
-
-
-
-def generate_tweet_title(text):
-    prompt_template = '''
-    Here is the content of a tweet that I have bookmarked. I want to generate a title for it that would make me recall what the full tweet was about. 
-    Please create this title.
-    {tweet_content}
-    '''
-    prompt = PromptTemplate(template=prompt_template, input_variables=['tweet_content'])
-    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
-    logging.debug("Tweet title: just before calling AI")
-    _input = prompt.format(tweet_content = text)
-    return clean_title(llm(_input))
-
-# For some reason the title comes out with extra quotes, double-quotes or /n at the beginning or end. So I need to clean it.
-def clean_title(s):
-    while s and any(s.startswith(char) or s.endswith(char) for char in ["\n", "'", "\"", " "]):
-        s = s.strip("\n '\"")
-    return s
-
-
-def get_article_data(url):
-    loader = WebBaseLoader(url)
-
-    # Define prompt
-    prompt_template = """
-    You are a helpful assistant that curates resources of interest for a human reader. 
-    Given the html code of a webpage that contains an article, you try to identify the author of the article, you create a title and a summary for that article. 
-
-    For the author, if you can't identify it with confidence, you can use the name of the publication. If you can't identify the name of the publication, you can return "Unidentified"
-
-    For the title, if the article already has a title, you may use it if you think it is a good one. Be specific. Remove the name of the author from it.
-
-    For the summary, identify the main theses, and organize as bullet points the thought process (no more than a few for each thesis).
-
-    .\n{format_instructions}
-
-    "{text}"
+def download_and_upload_to_s3(image_url):
     """
+    Download image from a URL and upload it to Amazon S3 bucket.
 
-    response_schemas = [
-        ResponseSchema(name="title", description="the title of the article"),
-        ResponseSchema(name="author", description="the author of the article"),
-        ResponseSchema(name="summary", description="the summary of the article")
-    ]
-    output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
-    format_instructions = output_parser.get_format_instructions()
+    Parameters:
+    image_url (str): URL of the image to be downloaded and uploaded.
+    bucket_name (str): Name of the S3 bucket.
+    s3_file_name (str): Desired file name to be used in S3.
+    """
+    # Initialize boto3 S3 client
+    s3 = boto3.client('s3')
 
-    prompt = PromptTemplate(
-        template=prompt_template, 
-        input_variables=["text"],
-        partial_variables={"format_instructions": format_instructions}
-    )
+    # Get the current timestamp and convert it to a string
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    
+    bucket_name = "bookmark-scrapper-bucket"
+    s3_file_name = f"{DEV_MODE.lower()}/uploaded_image_{timestamp}.jpg"
+    logging.debug(f"download and upload, url: {image_url}")
 
-    # Define LLM chain
-    llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-16k", openai_api_key=OPENAI_API_KEY) 
-    llm_chain = LLMChain(llm=llm, prompt=prompt)
+    try:
+        # Get image from URL
+        response = requests.get(image_url, stream=True)
+        response.raise_for_status()
 
-    # Define StuffDocumentsChain
-    stuff_chain = StuffDocumentsChain(
-        llm_chain=llm_chain, document_variable_name="text"
-    )
+        # Ensure the image is treated as binary data
+        response.raw.decode_content = True
 
-    docs = loader.load()
-    output = stuff_chain.run(docs)
-    structured_output = output_parser.parse(output)
-    return structured_output['title'], structured_output['author'], structured_output['summary']
+        # Upload image to S3
+        s3.upload_fileobj(response.raw, bucket_name, s3_file_name)
+        print(f"Successfully uploaded {s3_file_name} to {bucket_name}")
+
+        public_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_file_name}"
+        return public_url
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting image from URL: {e}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")

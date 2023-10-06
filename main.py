@@ -1,8 +1,10 @@
 import os
 from flask import Flask, jsonify
 from flask_httpauth import HTTPBasicAuth
-import notion_io, enrich
 import logging
+
+DEV_MODE = "DEV"
+import notion_io, enrich
 
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -32,38 +34,44 @@ def process_new_bookmarks():
   bookmarks =\
   notion_io.retrieve_bookmarks_from_notion(nb_bookmark_processed_per_run)
 
-  # Retrieve Twitter bookmarks
-  twitter_bookmarks = [bkmk for bkmk in bookmarks if bkmk["domain"] in ["twitter.com", "x.com"]]
+  # Initialize bookmark categories
+  twitter_bookmarks = []
+  linkedin_bookmarks = []
+  youtube_bookmarks = []
+  other_bookmarks = []
 
-  # Enrich Twitter bookmarks
-  bookmarks = enrich.enrich_twitter_bookmarks(twitter_bookmarks)
+  enriched_bookmarks = []
 
-  logging.debug(f"Nb Bookmarks: {len(bookmarks)}")
-  logging.debug(f"Bookmark author : {bookmarks[0]['author']}")
-  logging.debug(f"Bookmark title : {bookmarks[0]['title']}")
+  # Categorize bookmarks
+  for bkmk in bookmarks:
+      domain = bkmk.get("domain")
+      if domain in ["twitter.com", "x.com"]:
+          twitter_bookmarks.append(bkmk)
+      elif domain in ["linkedin.com", "www.linkedin.com"]:
+          linkedin_bookmarks.append(bkmk)
+      elif domain in ["youtube.com", "www.youtube.com"]:
+          youtube_bookmarks.append(bkmk)
+      elif domain is not None:
+          other_bookmarks.append(bkmk)
 
-  # Update bookmarks in notion_io
-  [notion_io.update_bookmark_in_notion(bkmk) for bkmk in bookmarks]
+  # Enrich Twitter bookmarks (uncomment and adjust as needed)
+  enriched_bookmarks += enrich.enrich_twitter_bookmarks(twitter_bookmarks)
+
+  # Enrich LinkedIn bookmarks
+  enriched_bookmarks += enrich.enrich_linkedin_bookmarks(linkedin_bookmarks)
+
+  # Enrich Youtube bookmarks
+  enriched_bookmarks += enrich.enrich_youtube_bookmarks(youtube_bookmarks)
+
+  # Enrich Other bookmarks
+  # enriched_bookmarks += enrich.enrich_other_bookmarks(youtube_bookmarks)
   
-  return bookmarks
-  ''''
-  for bookmark in unprocessed_bookmarks_list:
+  #logging.debug(f"LinkedIn bookmarks : {type(linkedin_bookmarks)}")
+  # Update bookmarks in notion_io (uncomment and adjust as needed)
+  [notion_io.update_bookmark_in_notion(bkmk) for bkmk in enriched_bookmarks]
 
-
-      # Update Notion
-      logging.debug("Twitter: reached notion update")
-      notion_io.update_properties(notion_page_id, bookmark_title, tweet_author)
-      notion_io.append_tweet_embed_to_page(notion_page_id, bookmarked_url)
-      notion_io.update_status(notion_page_id)
-
-      
-      # Update Notion page
-      logging.debug("NOT twitter: reached notion update")
-      notion_io.update_properties(notion_page_id, title, author)
-      notion_io.append_text_to_page(notion_page_id, summary)
-      notion_io.update_status(notion_page_id)
-  '''
-  return jsonify({"message":"Success"}), 200
+  # Return bookmarks as JSON
+  return jsonify(enriched_bookmarks)
 
 
 @app.errorhandler(Exception)
