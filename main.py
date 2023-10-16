@@ -45,30 +45,35 @@ def process_new_bookmarks():
   # Categorize bookmarks
   for bkmk in bookmarks:
       domain = bkmk.get("domain")
+      logging.debug(f"New bookmark: {bkmk['url']}")
       if domain in ["twitter.com", "x.com"]:
-          twitter_bookmarks.append(bkmk)
+          logging.debug("  Twitter")
+          #twitter_bookmarks.append(bkmk)
       elif domain in ["linkedin.com", "www.linkedin.com"]:
-          linkedin_bookmarks.append(bkmk)
+          logging.debug("  LinkedIn")
+          #linkedin_bookmarks.append(bkmk)
       elif domain in ["youtube.com", "www.youtube.com"]:
-          youtube_bookmarks.append(bkmk)
+          logging.debug("  Youtube")
+          #youtube_bookmarks.append(bkmk)
       elif domain is not None:
+          logging.debug("  Entered the Other bookmarks")
           other_bookmarks.append(bkmk)
 
   # Enrich Twitter bookmarks (uncomment and adjust as needed)
-  enriched_bookmarks += enrich.enrich_twitter_bookmarks(twitter_bookmarks)
+  #enriched_bookmarks += enrich.enrich_twitter_bookmarks(twitter_bookmarks)
 
   # Enrich LinkedIn bookmarks
-  enriched_bookmarks += enrich.enrich_linkedin_bookmarks(linkedin_bookmarks)
+  #enriched_bookmarks += enrich.enrich_linkedin_bookmarks(linkedin_bookmarks)
 
   # Enrich Youtube bookmarks
-  enriched_bookmarks += enrich.enrich_youtube_bookmarks(youtube_bookmarks)
+  #enriched_bookmarks += enrich.enrich_youtube_bookmarks(youtube_bookmarks)
 
   # Enrich Other bookmarks
-  # enriched_bookmarks += enrich.enrich_other_bookmarks(youtube_bookmarks)
+  enriched_bookmarks += enrich.enrich_other_bookmarks(other_bookmarks)
   
-  #logging.debug(f"LinkedIn bookmarks : {type(linkedin_bookmarks)}")
+  logging.debug("----  Finished enriching --------")
   # Update bookmarks in notion_io (uncomment and adjust as needed)
-  [notion_io.update_bookmark_in_notion(bkmk) for bkmk in enriched_bookmarks]
+  #[notion_io.update_bookmark_in_notion(bkmk) for bkmk in enriched_bookmarks]
 
   # Return bookmarks as JSON
   return jsonify(enriched_bookmarks)

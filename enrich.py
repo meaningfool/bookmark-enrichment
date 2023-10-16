@@ -5,8 +5,9 @@ import requests
 import json
 import logging
 import aws_lambda
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from main import DEV_MODE
+from langchain.chat_models import ChatOpenAI
 
 
 
@@ -184,18 +185,119 @@ def get_youtube_data(bkmk):
 
 def enrich_other_bookmarks(other_bookmarks):
   for bkmk in other_bookmarks:
-    bkmk['html_content'] = retrieve_page_html(bkmk)
-    bkmk['author'], bkmk['title'], bkmk['image_url'], bkmk['summary']= get_article_data(bkmk)
-
+    html = retrieve_page_html(bkmk)
+    logging.debug(f"Successfully retrieved HTML for {bkmk['url']}/n Is html Null: {html is None}")
+    type = article_or_website(html)
+    bkmk['type'] = type
+    if type == "article":
+      logging.debug(f"  Enter article loop")
+      bkmk['title'] = get_article_title(html)
+      logging.debug(f"  Title:{bkmk['title']}")
+      bkmk['author'] = get_author(html)
+      logging.debug(f"  Author:{bkmk['author']}")
+      bkmk['image_url'] = get_image_url(bkmk['url'], html)
+      logging.debug(f"  Image:{bkmk['image_url']}")
+      bkmk['summary']= get_summary(html)
+      logging.debug(f"  Summary:{bkmk['summary']}")
+    else:
+      logging.debug(f"  Enter the NON-article loop")
+      logging.debug(f"Head tag content: {get_clean_head_tag(html)}")
+      bkmk['title'] = get_website_title(html)
+      logging.debug(f"  Title:{bkmk['title']}")
   return other_bookmarks
 
-def get_article_data(bkmk):
-  soup = BeautifulSoup(bkmk["html_content"], 'html.parser')
-  author = ""
-  title = "Undefined"
-  image_url = None
-  summary = None
 
+def article_or_website(html):
+  soup = BeautifulSoup(html, 'html.parser')
+
+  meta_tag = soup.find('meta', {'property': 'og:type'})
+  article = soup.find('article')
+  type = ""
+
+  if meta_tag and meta_tag.has_attr('content'):
+    type = meta_tag['content']
+  elif article:
+    type = "article"
+  else:
+    type = "website"
+
+  return type
   
 
+def get_clean_head_tag(html):
+  soup = BeautifulSoup(html, 'html.parser')
+  for element in soup.find_all(['script', 'style', 'link']):
+    element.decompose()
+  head = soup.find('head')
+  return head
+
+def get_website_title(html):
+  head = get_clean_head_tag(html)
+  title = get_data(head, "Return the description. Keep only the first sentence. If you can't find a description return ''")
+
+  return title
+
+def get_article_title(html):
+  soup = BeautifulSoup(html, 'html.parser')
+  title=""
+  if soup.find('h1') is not None:
+    title = soup.find('h1').text
+  else:
+    head = get_clean_head_tag(html)
+    title = get_data(head, "Return the title. If you can't find a title return '?'")
+
+  return title
+
+def get_author(html):
+  head = get_clean_head_tag(html)
+  author = get_data(head, "This is an article head tag. Return the author's name if you can find it. Otherwise return 'Not found'")
+
+  return author
+
+
+def get_image_url(url, html):
+  soup = BeautifulSoup(html, 'html.parser')
+  figure_tag = None
+  if soup.find('figure'):
+    figure_tag = soup.find('figure')
+  elif soup.find(class_='figure'):
+    figure_tag = soup.find(class_='figure')
   
+  image_src=''
+  image_url=''
+  
+  # Check if figure_image and its src attribute are not None before proceeding
+  if figure_tag is not None and figure_tag.find('img'):
+    if figure_tag.find('img').has_attr('src'):
+      image_src = figure_tag.find('img')['src']
+    elif figure_tag.find('img').has_attr('data-src'):
+      image_src = figure_tag.find('img')['data-src']
+      
+  # Use urljoin to ensure the URL is absolute
+  if image_src is not None:
+    image_url = urljoin(url, image_src)
+
+  return image_url
+
+def get_summary(html):
+  soup = BeautifulSoup(html, 'html.parser')
+  article = soup.find("article")
+  return "abc"
+
+
+  
+def get_data(html, prompt_chunk):
+    # Text of the prompt template
+    prompt = f'''You are acting as an HTML parser. {prompt_chunk}
+
+    HTML:
+    {html}
+    '''
+
+    # LLM
+    llm = ChatOpenAI(temperature=0, openai_api_key=os.environ["OPENAI_API_KEY"], model_name="gpt-3.5-turbo") 
+
+    # Run the chain
+    data = llm.predict(prompt)
+    
+    return data

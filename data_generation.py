@@ -10,18 +10,6 @@ from langchain.prompts import PromptTemplate
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 
 
-def generate_tweet_title(text):
-    prompt_template = '''
-    Here is the content of a tweet that I have bookmarked. I want to generate a title for it that would make me recall what the full tweet was about. 
-    Please create this title.
-    {tweet_content}
-    '''
-    prompt = PromptTemplate(template=prompt_template, input_variables=['tweet_content'])
-    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
-    logging.debug("Tweet title: just before calling AI")
-    _input = prompt.format(tweet_content = text)
-    return clean_title(llm(_input))
-
 # For some reason the title comes out with extra quotes, double-quotes or /n at the beginning or end. So I need to clean it.
 def clean_title(s):
     while s and any(s.startswith(char) or s.endswith(char) for char in ["\n", "'", "\"", " "]):
