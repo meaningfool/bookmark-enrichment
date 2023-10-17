@@ -1272,7 +1272,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-ena
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10.0,<3.11"
-content-hash = "651f22df3909e740ad4f2afbcbd5deaf082a970fea6e64aedf7e2b47e6282040"
+content-hash = "81a3c0a8f1eea0587e4baf87b6d176ffef41a126d0b0cccc3a376d0ac992c013"
 
 [metadata.files]
 aiohttp = []

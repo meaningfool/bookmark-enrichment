@@ -86,29 +86,37 @@ def update_bookmark_in_notion(bookmark):
 
 def update_properties(bookmark):
   url = f"https://api.notion.com/v1/pages/{bookmark['notion_id']}"
-  data = {
-    "properties": {
-        "Name": {
-            "title": [
-                {
-                    "type": "text", 
-                    "text": { 
-                        "content": bookmark["title"]
-                    }
+
+  name_json = {
+    "Name": {
+        "title": [
+            {
+                "type": "text", 
+                "text": { 
+                    "content": bookmark["title"]
                 }
-            ]
-        },
-        "Author": {
-            "rich_text": [
-                {
-                    "type": "text",
-                    "text": {
-                        "content": bookmark["author"]
-                    }
-                }
-            ]
-        }
+            }
+        ]
     }
+  }
+  
+  author_json = {}
+  if bookmark.get("author"):
+    author_json = {
+      "Author": {
+          "rich_text": [
+              {
+                  "type": "text",
+                  "text": {
+                      "content": bookmark["author"]
+                  }
+              }
+          ]
+      }
+    }
+  
+  data = {
+    "properties": name_json | author_json
   }
   
   res = requests.patch(url, json=data, headers=headers)

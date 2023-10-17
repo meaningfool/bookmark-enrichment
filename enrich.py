@@ -8,16 +8,19 @@ import aws_lambda
 from urllib.parse import urlparse, urljoin
 from main import DEV_MODE
 from langchain.chat_models import ChatOpenAI
+from openai.error import InvalidRequestError
 
 
 
 def enrich_twitter_bookmarks(twitter_bookmarks):
   
   twitter_bookmarks = retrieve_tweets_html(twitter_bookmarks)
-
+  logging.debug(f"Tweets retrieved")
+  
   # Extract a title and author and add them to the dict
   for bkmk in twitter_bookmarks:
     bkmk["title"], bkmk["author"] = get_tweet_title_author(bkmk)
+    del bkmk["html_content"]
   
   return twitter_bookmarks
 
@@ -198,7 +201,7 @@ def enrich_other_bookmarks(other_bookmarks):
       bkmk['image_url'] = get_image_url(bkmk['url'], html)
       logging.debug(f"  Image:{bkmk['image_url']}")
       bkmk['summary']= get_summary(html)
-      logging.debug(f"  Summary:{bkmk['summary']}")
+      #logging.debug(f"  Summary:{bkmk['summary']}")
     else:
       logging.debug(f"  Enter the NON-article loop")
       logging.debug(f"Head tag content: {get_clean_head_tag(html)}")
@@ -231,6 +234,22 @@ def get_clean_head_tag(html):
   head = soup.find('head')
   return head
 
+def get_article_content(html):
+  soup = BeautifulSoup(html, 'html.parser')
+  content = ''
+  
+  if soup.find('article'):
+    content=soup.find('article')
+  elif soup.find('main'):
+    content=soup.find('main')
+  else:
+    content=soup.find('body')
+    for item in soup(["header", "nav", "footer", "svg"]):
+      item.decompose()
+
+  return content
+    
+
 def get_website_title(html):
   head = get_clean_head_tag(html)
   title = get_data(head, "Return the description. Keep only the first sentence. If you can't find a description return ''")
@@ -250,7 +269,10 @@ def get_article_title(html):
 
 def get_author(html):
   head = get_clean_head_tag(html)
-  author = get_data(head, "This is an article head tag. Return the author's name if you can find it. Otherwise return 'Not found'")
+  author = get_data(head, "This is an article head tag. Return the author's name if you can find it in the metadata. Otherwise return 'Not found'. Format : First name Last name.")
+
+  if author == 'Not found':
+    author = get_data(get_article_content(html), "This is an article content. Return the author's name if you can find it. Otherwise return 'Not found'. Format : First name Last name.")
 
   return author
 
@@ -274,30 +296,46 @@ def get_image_url(url, html):
       image_src = figure_tag.find('img')['data-src']
       
   # Use urljoin to ensure the URL is absolute
-  if image_src is not None:
+  if image_src != '':
     image_url = urljoin(url, image_src)
 
   return image_url
 
 def get_summary(html):
-  soup = BeautifulSoup(html, 'html.parser')
-  article = soup.find("article")
-  return "abc"
+  content = get_article_content(html)
+  summary = get_data(content, "This is an article content. Identify the main theses, and organize them as bullet points.")
+  return summary
 
 
   
-def get_data(html, prompt_chunk):
+def get_data(html, prompt_variable, mode="FULL", window="4K"):
     # Text of the prompt template
-    prompt = f'''You are acting as an HTML parser. {prompt_chunk}
+    prompt = f'''You are acting as an HTML parser. {prompt_variable}
 
     HTML:
-    {html}
     '''
 
+    if mode == "FULL":
+      prompt = f"{prompt}/n{html}"
+    else:
+      prompt = f"{prompt}/n{html.get_text()}"
+
+    model_name="gpt-3.5-turbo"
+  
+    if window == "16K":
+      model_name="gpt-3.5-turbo-16k"
+
     # LLM
-    llm = ChatOpenAI(temperature=0, openai_api_key=os.environ["OPENAI_API_KEY"], model_name="gpt-3.5-turbo") 
+    llm = ChatOpenAI(temperature=0, openai_api_key=os.environ["OPENAI_API_KEY"], model_name=model_name) 
 
     # Run the chain
-    data = llm.predict(prompt)
-    
-    return data
+    try:
+      data = llm.predict(prompt)
+      return data
+    except InvalidRequestError:
+      if mode == "FULL":
+        return get_data(html, prompt_variable, "SIMPLIFIED")
+      elif mode == "SIMPLIFIED":
+        return get_data(html, prompt_variable, "SIMPLIFIED", "16K")
+      else:
+        return "The HTML was too long to pass to the LLM in 1 call."
