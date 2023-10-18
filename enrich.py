@@ -183,24 +183,17 @@ def get_youtube_data(bkmk):
 def enrich_other_bookmarks(other_bookmarks):
   for bkmk in other_bookmarks:
     html = retrieve_page_html(bkmk)
-    logging.debug(f"Successfully retrieved HTML for {bkmk['url']}/n Is html Null: {html is None}")
     type = article_or_website(html)
     bkmk['type'] = type
     if type == "article":
       logging.debug(f"  Enter article loop")
       bkmk['title'] = get_article_title(html)
-      logging.debug(f"  Title:{bkmk['title']}")
       bkmk['author'] = get_author(html)
-      logging.debug(f"  Author:{bkmk['author']}")
       bkmk['image_url'] = get_image_url(bkmk['url'], html)
-      logging.debug(f"  Image:{bkmk['image_url']}")
       bkmk['summary']= get_summary(html)
-      #logging.debug(f"  Summary:{bkmk['summary']}")
     else:
       logging.debug(f"  Enter the NON-article loop")
-      logging.debug(f"Head tag content: {get_clean_head_tag(html)}")
       bkmk['title'] = get_website_title(html)
-      logging.debug(f"  Title:{bkmk['title']}")
   return other_bookmarks
 
 

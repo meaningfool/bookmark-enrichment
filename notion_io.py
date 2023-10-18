@@ -51,9 +51,7 @@ def get_bookmarks_from_notion(page_size):
       "filter": filter,
       "sorts": sorts
   }
-  print(json.dumps(data))
   response = requests.post(url, headers=headers, data=json.dumps(data))
-  print(response.status_code, response.reason)
 
   ## Raise an error if the bookmarks cannot be retrieved
   if response.status_code != 200:
