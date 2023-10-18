@@ -78,25 +78,19 @@ def get_tweet_widget_url(tweet_id):
 
 def get_tweet_title_author(bkmk):
   soup = BeautifulSoup(bkmk["html_content"], 'html.parser')
-  text = soup.get_text()
-  
-  # Define the regular expression patterns
-  author_pattern = re.compile(r'Twitter Embed(.*?)(?=·|@)')
-  title_pattern = re.compile(r'·Follow(.*?)(?=\n|$)', re.DOTALL)
-  
-  # Search for the patterns in the text
-  author_match = author_pattern.search(text)
-  title_match = title_pattern.search(text)
+  text = list(soup.stripped_strings)
+  bkmk["tweet_texts"] = text
 
-  if author_match:
-      author = author_match.group(1).strip()
-  else:
-      author = "Not found"  
+  author = text[1]
+  tweet_text = text[5]
+  first_paragraph = tweet_text.split('\n')[0]
 
-  if title_match:
-      title = title_match.group(1).strip()
-  else:
-      title = "Not found"
+  sentences = re.split(r'(?<=[.!?]) +', first_paragraph)
+  title=''
+  for i in range(len(sentences)):
+    title = ' '.join(sentences[0:len(sentences)-i])
+    if len(title) <=100:
+        break
 
   return title, author
 

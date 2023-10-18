@@ -7,7 +7,7 @@ DEV_MODE = "PROD"
 import notion_io, enrich
 
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+#logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
